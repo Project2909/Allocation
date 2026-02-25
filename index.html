@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BHEL | Corporate Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#f1f5f9;padding-bottom:60px}
+
+/* HEADER */
+header{
+  background:#0f172a;color:white;
+  display:flex;justify-content:space-between;
+  align-items:center;padding:14px 40px
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo img{height:45px}
+nav a{margin-left:22px;color:white;text-decoration:none;cursor:pointer}
+nav a:hover{text-decoration:underline}
+.profile{font-size:12px;color:#cbd5e1}
+
+/* HERO */
+.hero{
+  height:420px;
+  background:url('https://upload.wikimedia.org/wikipedia/commons/6/6e/BHEL_Trichy.jpg') center/cover no-repeat;
+}
+.hero-overlay{
+  height:100%;background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  color:white;text-align:center
+}
+
+/* PAGES */
+.page{display:none;padding:40px}
+.page.active{display:block}
+
+/* UPLOAD BOX */
+.upload-box{
+  background:white;
+  padding:40px;
+  width:600px;
+  margin:60px auto;
+  text-align:center;
+  border-radius:8px
+}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:30px}
+th,td{border:1px solid #ccc;padding:10px;text-align:center}
+th{background:#1e90ff;color:white}
+input[type=number]{width:80px}
+
+/* BUTTONS */
+.btn{
+  padding:10px 18px;
+  background:#1e90ff;
+  color:white;
+  border:none;
+  cursor:pointer;
+  width:100%;
+  margin-bottom:10px;
+  border-radius:5px;
+}
+.btn.secondary{
+  background:#64748b;
+}
+
+/* MODAL */
+.modal{
+  display:none;position:fixed;top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,.5);
+  justify-content:center;align-items:center
+}
+.modal.active{display:flex}
+.modal-box{
+  background:white;padding:25px;
+  width:320px;border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.modal-box input, .modal-box select{
+  width:100%;padding:8px;margin-bottom:10px
+}
+
+/* PROJECT PREVIEW TABLE SCROLL */
+.project-table-container{
+  overflow:auto; /* horizontal + vertical scrolling */
+  margin-top:20px;
+  max-height:500px; /* prevent footer overlap */
+  border:1px solid #ccc;
+  white-space: nowrap; /* prevent table cells from wrapping */
+}
+
+/* CHECKBOX COLUMN FIX */
+table.projectTable th:first-child,
+table.projectTable td:first-child{
+  position:sticky;
+  left:0;
+  background:#f1f5f9;
+  z-index:2;
+  text-align:center;
+  width:40px;
+}
+
+/* FOOTER */
+footer{
+  position:fixed;bottom:0;width:100%;
+  background:#0f172a;color:white;
+  text-align:center;padding:12px;font-size:13px
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">
+    <img src="https://upload.wikimedia.org/wikipedia/en/7/74/Bharat_Heavy_Electricals_Limited_Logo.svg">
+    <b>BHEL</b>
+  </div>
+
+  <nav id="authNav">
+    <a onclick="openSignIn()">Sign In</a>
+    <a onclick="openLogin()">Login</a>
+  </nav>
+
+  <nav id="dashNav" style="display:none">
+    <a onclick="showPage('dashboard')">Dashboard</a>
+    <a>About Company</a>
+    <a onclick="openManpower()">Manpower Allocation</a>
+    <span class="profile">Profile: <span id="profileName"></span></span>
+  </nav>
+</header>
+
+<!-- HOME -->
+<div id="home" class="page active">
+  <div class="hero">
+    <div class="hero-overlay">
+      <div>
+        <h1>Bharat Heavy Electricals Limited</h1>
+        <p>Corporate Manpower Allocation Portal</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="page">
+  <h2>Employee Dashboard</h2>
+  <p>Welcome to BHEL Corporate Portal</p>
+</div>
+
+<!-- STEP 2 – UPLOAD -->
+<div id="uploadPage" class="page">
+  <div class="upload-box">
+    <h2>Upload Manpower Excel</h2>
+    <input type="file" id="excelFile" accept=".xlsx">
+    <br><br>
+    <button class="btn" onclick="uploadExcel()">Upload</button>
+  </div>
+</div>
+
+<!-- STEP 2 – PREVIEW -->
+<div id="previewPage" class="page">
+  <table id="dataTable"></table>
+  <br>
+  <button class="btn" onclick="generateExcel()">Generate Updated Excel</button>
+  <button class="btn secondary" onclick="openProjectUpload()">Next</button>
+</div>
+
+<!-- STEP 3 – PROJECT DATA UPLOAD MODAL -->
+<div id="projectModal" class="modal">
+  <div class="modal-box">
+    <h3>Upload Project Data Excel</h3>
+    <input type="file" id="projectFile" accept=".xlsx">
+    <button class="btn" onclick="processProjectExcel()">Upload</button>
+    <button class="btn secondary" onclick="closeProjectModal()">Back</button>
+  </div>
+</div>
+
+<!-- STEP 4 – PROJECT DATA PREVIEW PAGE -->
+<div id="projectPreviewPage" class="page">
+  <h2>Project Data Preview</h2>
+  <label for="sheetSelect">Select Sheet:</label>
+  <select id="sheetSelect" onchange="renderProjectSheet()"></select>
+  <div class="project-table-container">
+    <table id="projectTable" class="projectTable"></table>
+  </div>
+</div>
+
+<!-- SIGN IN -->
+<div id="signInModal" class="modal">
+  <div class="modal-box">
+    <h3>Employee Sign In</h3>
+    <input id="siUser" placeholder="Employee Username">
+    <input id="siId" placeholder="Employee ID">
+    <button class="btn" onclick="createAccount()">Create</button>
+    <button class="btn secondary" onclick="closeModals()">Back</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginModal" class="modal">
+  <div class="modal-box">
+    <h3>Employee Login</h3>
+    <input id="liUser" placeholder="Employee Username">
+    <input id="liId" placeholder="Employee ID">
+    <button class="btn" onclick="login()">Login</button>
+    <button class="btn secondary" onclick="closeModals()">Back</button>
+  </div>
+</div>
+
+<footer>© 2026 Bharat Heavy Electricals Limited</footer>
+
+<script>
+/* MODAL CONTROL */
+function openSignIn(){closeModals();signInModal.classList.add("active")}
+function openLogin(){closeModals();loginModal.classList.add("active")}
+function closeModals(){
+  signInModal.classList.remove("active");
+  loginModal.classList.remove("active");
+}
+function openProjectUpload(){projectModal.classList.add("active")}
+function closeProjectModal(){projectModal.classList.remove("active")}
+
+/* AUTH */
+function createAccount(){
+  localStorage.empUser=siUser.value;
+  localStorage.empId=siId.value;
+  alert("Account Created");
+  closeModals();
+}
+
+function login(){
+  if(liUser.value===localStorage.empUser && liId.value===localStorage.empId){
+    authNav.style.display="none";
+    dashNav.style.display="flex";
+    profileName.innerText=liUser.value;
+    closeModals();
+    showPage("dashboard");
+  }else alert("Invalid Credentials");
+}
+
+/* PAGE CONTROL */
+function showPage(id){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+function openManpower(){showPage("uploadPage")}
+
+/* STEP 2 LOGIC */
+let excelData=[];
+function uploadExcel(){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"binary"});
+    const sheet=wb.Sheets[wb.SheetNames[0]];
+    excelData=XLSX.utils.sheet_to_json(sheet);
+    excelData.forEach(r=>{
+      r.percent=100;
+      r.updated=r.Manpower;
+      r.selected=false;
+    });
+    renderTable();
+    showPage("previewPage");
+  };
+  reader.readAsBinaryString(excelFile.files[0]);
+}
+function renderTable(){
+  let html=`<tr>
+    <th>Select</th>
+    <th>Area</th>
+    <th>Current Manpower</th>
+    <th>Allocation %</th>
+    <th>Updated Manpower</th>
+  </tr>`;
+  excelData.forEach((r,i)=>{
+    html+=`
+      <tr>
+        <td><input type="checkbox" onchange="excelData[${i}].selected=this.checked"></td>
+        <td>${r.Area}</td>
+        <td>${r.Manpower}</td>
+        <td><input type="number" value="100" onchange="calc(${i},this.value)"></td>
+        <td id="u${i}">${r.updated}</td>
+      </tr>`;
+  });
+  dataTable.innerHTML=html;
+}
+function calc(i,v){
+  excelData[i].updated=Math.round(excelData[i].Manpower*v/100);
+  document.getElementById("u"+i).innerText=excelData[i].updated;
+}
+function generateExcel(){
+  const out=excelData.filter(r=>r.selected)
+    .map(r=>({Area:r.Area,Manpower:r.updated}));
+  const ws=XLSX.utils.json_to_sheet(out);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Updated");
+  XLSX.writeFile(wb,"Updated_Manpower.xlsx");
+}
+
+/* STEP 3 & 4 – PROJECT DATA */
+let projectWorkbook;
+function processProjectExcel(){
+  if(projectFile.files.length===0){
+    alert("Please select a file");
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    projectWorkbook=XLSX.read(e.target.result,{type:"binary"});
+    const select=sheetSelect;
+    select.innerHTML="";
+    projectWorkbook.SheetNames.forEach(name=>{
+      const opt=document.createElement("option");
+      opt.value=name;
+      opt.text=name;
+      select.appendChild(opt);
+    });
+    renderProjectSheet();
+    closeProjectModal();
+    showPage("projectPreviewPage");
+  };
+  reader.readAsBinaryString(projectFile.files[0]);
+}
+
+function renderProjectSheet(){
+  const sheetName=sheetSelect.value;
+  const sheet=projectWorkbook.Sheets[sheetName];
+  const range=XLSX.utils.decode_range(sheet['!ref']);
+
+  let maxRow=range.e.r;
+  let maxCol=range.e.c;
+
+  // Find last non-empty row
+  for(let R=range.e.r; R>=range.s.r; R--){
+    let emptyRow=true;
+    for(let C=range.s.c; C<=range.e.c; C++){
+      const cell=sheet[XLSX.utils.encode_cell({r:R,c:C})];
+      if(cell && cell.v!==""){emptyRow=false;break;}
+    }
+    if(!emptyRow){maxRow=R; break;}
+  }
+
+  // Find last non-empty column
+  for(let C=range.e.c; C>=range.s.c; C--){
+    let emptyCol=true;
+    for(let R=range.s.r; R<=maxRow; R++){
+      const cell=sheet[XLSX.utils.encode_cell({r:R,c:C})];
+      if(cell && cell.v!==""){emptyCol=false;break;}
+    }
+    if(!emptyCol){maxCol=C; break;}
+  }
+
+  let html="<tr><th></th>"; // checkbox header
+  for(let C=range.s.c; C<=maxCol; C++){
+    const cell=sheet[XLSX.utils.encode_cell({r:range.s.r,c:C})];
+    html+=`<th>${cell ? cell.v : ""}</th>`;
+  }
+  html+="</tr>";
+
+  for(let R=range.s.r+1; R<=maxRow; R++){
+    html+="<tr>";
+    html+="<td><input type='checkbox'></td>";
+    for(let C=range.s.c; C<=maxCol; C++){
+      const cell=sheet[XLSX.utils.encode_cell({r:R,c:C})];
+      html+=`<td>${cell ? cell.v : ""}</td>`;
+    }
+    html+="</tr>";
+  }
+
+  projectTable.innerHTML=html;
+}
+</script>
+
+</body>
+</html>
